@@ -87,3 +87,22 @@ Stage Summary:
 - App is now 100% offline: no Google Fonts, no external favicon (local /favicon.svg), no external assets, no z-cdn. Video + API + chunks all local; icons inline; fonts from the OS.
 - Confirmed by network capture: zero non-local requests.
 - Ready for fully-offline LAN deployment over plain HTTP.
+
+---
+Task ID: 5
+Agent: main (Z.ai Code)
+Task: User pasted "Module not found" errors for @/components/* and @/lib/utils (referencing an OLD layout.tsx that still had Vazirmatn). Diagnose.
+
+Work Log:
+- Read current src/app/layout.tsx → it is the CORRECT version (no Vazirmatn; the error log's line 2 "import Vazirmatn" no longer exists). So the pasted errors are STALE.
+- Checked all referenced files exist on disk: src/components/theme-provider.tsx, theme-toggle.tsx, src/components/ui/{toaster,button,badge,input,separator}.tsx, src/lib/utils.ts — ALL present.
+- Read tsconfig.json → paths "@/*": ["./src/*"] is correct.
+- Confirmed node_modules intact (next, next-themes present).
+- ps → dev server running (next-server v16.1.3, PID 3437; no duplicate instances).
+- grep -c "Module not found" dev.log → 0. The current dev.log has ZERO such errors; last lines are all GET / 200 and GET /api/videos 200.
+- Verified with Agent Browser over http://localhost:3000: title "کتابخانه ویدئو" loads, snapshot shows full UI, no errors, video plays (ok=true, paused=false, dur=12).
+
+Stage Summary:
+- Root cause: the pasted errors are STALE — from a transient moment during file editing when Turbopack's cache was momentarily inconsistent. They are NOT in the current dev.log (grep=0) and the app loads cleanly now.
+- No code change needed. The "Ready in 1425ms" in the user's paste does not match any current "Ready" line (current: 628/751/608/659ms), confirming it was from an earlier (overwritten) log session.
+- Action: user should refresh the Preview panel (or Open in New Tab) to clear any cached error page; the live app is healthy.
