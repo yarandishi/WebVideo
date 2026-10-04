@@ -53,3 +53,19 @@ Stage Summary:
 - Fixed a real offline issue: favicon is now local (no external CDN).
 - Added allowedDevOrigins for the preview gateway.
 - Action for user: open via the Preview panel or "Open in New Tab" (both HTTPS) — do not use http://. If an error appears, refresh the preview panel.
+
+---
+Task ID: 3
+Agent: main (Z.ai Code)
+Task: User wants the app to run on a local network over plain HTTP (no HTTPS). "درسنش کن" (fix it).
+
+Work Log:
+- Verified the app works fully over plain HTTP via agent-browser → http://localhost:3000: title correct, video plays (paused=false, duration=12), served from http://localhost:3000/videos/sample-lesson-1.mp4. Confirmed: proto="http:". The CODE requires no HTTPS.
+- Confirmed the "Bad Request: plain HTTP to SSL-enabled server port" error is ONLY from the sandbox's external cloud gateway (port 443 TLS, infra-controlled, upstream of my Caddyfile on :81). I cannot disable that TLS layer — it is not part of my code/config.
+- Updated next.config.ts with a guiding comment explaining: app is HTTP-only compatible; allowedDevOrigins only affects dev server host checks; for LAN use the production build (`bun run build && bun run start`) has no host restrictions and serves plain HTTP on http://<machine-ip>:3000; if using dev on LAN, add the machine IP/host to allowedDevOrigins.
+- Confirmed dev server binds to 0.0.0.0:3000 (dev.log "Network: http://21.0.15.18:3000") so it is reachable from other machines on the network over HTTP.
+
+Stage Summary:
+- The app is 100% HTTP-compatible — no HTTPS anywhere in the code (all URLs relative, local favicon, no HSTS).
+- The sandbox PREVIEW is HTTPS-only (cloud infra, unchangeable) — must use HTTPS to view here.
+- For the user's actual local network: deploy on a LAN machine; colleagues access http://<machine-ip>:3000 (plain HTTP, no SSL). Two options: (a) production build+start (recommended, no host checks), (b) bun run dev + add machine IP to allowedDevOrigins.
