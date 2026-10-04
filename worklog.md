@@ -69,3 +69,21 @@ Stage Summary:
 - The app is 100% HTTP-compatible — no HTTPS anywhere in the code (all URLs relative, local favicon, no HSTS).
 - The sandbox PREVIEW is HTTPS-only (cloud infra, unchangeable) — must use HTTPS to view here.
 - For the user's actual local network: deploy on a LAN machine; colleagues access http://<machine-ip>:3000 (plain HTTP, no SSL). Two options: (a) production build+start (recommended, no host checks), (b) bun run dev + add machine IP to allowedDevOrigins.
+
+---
+Task ID: 4
+Agent: main (Z.ai Code)
+Task: User: must be COMPLETELY offline — app was still fetching fonts from the internet (next/font/google Vazirmatn). Fix fully.
+
+Work Log:
+- Root cause: layout.tsx imported `Vazirmatn` from `next/font/google`. In dev, Next.js fetches the font from Google Fonts → not offline.
+- Checked system for a local Persian font (fc-list) → none available (only DejaVu/Liberation), so cannot bundle from system.
+- Removed `next/font/google` entirely from src/app/layout.tsx (no font import, no CSS variable injection from Google).
+- Updated src/app/globals.css `--font-sans` to a Persian-capable SYSTEM font stack: system-ui, -apple-system, "Segoe UI", Tahoma, "Geeza Pro", "Noto Sans Arabic", "Vazirmatn", Vazir, Arial, sans-serif. Zero font files fetched; browser uses the viewer's OS fonts (Tahoma/Segoe UI render Persian well on Windows).
+- Verified with Agent Browser over http://localhost:3000: title "کتابخانه ویدئو" renders, video plays (206), api 200. Grep of all network requests for `font|google|gstatic|googleapis|z-cdn|woff|ttf` → ZERO matches. Every request goes to localhost:3000 (local) or inline data: URIs. No external dependency remains.
+- Lint clean.
+
+Stage Summary:
+- App is now 100% offline: no Google Fonts, no external favicon (local /favicon.svg), no external assets, no z-cdn. Video + API + chunks all local; icons inline; fonts from the OS.
+- Confirmed by network capture: zero non-local requests.
+- Ready for fully-offline LAN deployment over plain HTTP.
