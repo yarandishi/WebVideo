@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: "کتابخانه ویدئو | آموزش همکاران",
   description: "نمایش و پخش ویدئوهای آموزشی به‌صورت آفلاین و ساده",
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/favicon.svg",
   },
 };
 

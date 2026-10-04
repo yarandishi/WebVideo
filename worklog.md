@@ -30,3 +30,26 @@ Stage Summary:
 - Works fully offline (no external runtime calls; fonts self-hosted by next/font; videos served locally).
 - Persian RTL UI, light/dark mode, responsive, sticky footer, custom scrollbars.
 - Artifacts: src/app/page.tsx, src/app/api/videos/route.ts, src/app/layout.tsx, src/app/globals.css, src/components/theme-provider.tsx, src/components/theme-toggle.tsx, public/videos/*.mp4.
+
+---
+Task ID: 2
+Agent: main (Z.ai Code)
+Task: User reported "Bad Request: plain HTTP to an SSL-enabled server port" when opening the app. Diagnose and fix.
+
+Work Log:
+- Read dev.log → Next.js healthy (GET / 200, GET /api/videos 200).
+- Read Caddyfile → gateway on :81 (HTTP), reverse-proxies to localhost:3000.
+- Reproduced via the HTTPS preview domain with Agent Browser: app works perfectly (title, video plays, 206 media, no console errors). Network log shows ALL requests are HTTPS, no http:// mixed content.
+- Conclusion: the Caddy "Bad Request... plain HTTP to an SSL-enabled server port" only occurs when the browser navigates to http://preview-chat-*.space-z.ai (plain HTTP hits the TLS port 443). The app itself is fine over HTTPS.
+- Found a real offline bug regardless: favicon metadata pointed to external CDN (https://z-cdn.chatglm.cn/...) which violates the "offline" requirement.
+- Created public/favicon.svg (local clapperboard icon).
+- Updated src/app/layout.tsx metadata icons → "/favicon.svg" (fully local now).
+- Updated next.config.ts: added allowedDevOrigins: ["*.space-z.ai"] to allow the sandbox preview gateway origin and remove the cross-origin dev warning.
+- First attempt used a RegExp for allowedDevOrigins → Next 16 rejected it ("Expected string, received object"). Fixed to string wildcard ["*.space-z.ai"].
+- Re-verified over HTTPS: favicon now served from /favicon.svg (local), no z-cdn request after reload, no cross-origin warning, video still plays (paused=false, duration=12, served from preview domain HTTPS).
+
+Stage Summary:
+- Root cause of user's error: the preview was opened with http:// scheme. The app works over HTTPS (verified).
+- Fixed a real offline issue: favicon is now local (no external CDN).
+- Added allowedDevOrigins for the preview gateway.
+- Action for user: open via the Preview panel or "Open in New Tab" (both HTTPS) — do not use http://. If an error appears, refresh the preview panel.
