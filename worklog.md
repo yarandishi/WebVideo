@@ -309,3 +309,23 @@ Stage Summary:
 - Cross-browser visibility: focus-auto-refresh added to Videos/Groups tabs (stale open tabs now re-fetch on focus). If the user is mixing the sandbox preview with their local Windows app, those are separate servers with separate databases — groups created in one will NOT appear in the other (expected, not a bug).
 - Fullscreen: custom enlarge/shrink button on the player (Maximize2 → enter fullscreen; Minimize2 → exit), plus the native video controls still available. Verified working.
 - No DB/data changes. Offline font, view counts, online panel, download, direct links all intact.
+
+---
+Task ID: 13
+Agent: main (Z.ai Code)
+Task: (1) Make fullscreen enter/exit buttons CLEAR and labeled for beginner users. (2) Confirm RTL on admin + main page. (3) Diagnose "groups + uploaded video missing in another browser/system but video still playable".
+
+Work Log:
+- (1) Fullscreen: replaced the small icon-only overlay button with TWO clear labeled controls in src/app/page.tsx:
+  * A prominent "نمایش تمام‌صفحه" button (Maximize2 icon + label) in the action-button row below the player (always visible when a video is selected).
+  * A prominent "خروج از تمام‌صفحه" overlay button (Minimize2 icon + label, solid bg, top-right) shown ONLY while in fullscreen — so beginners see a clear way out.
+  Agent-browser verified: clicking "نمایش تمام‌صفحه" puts the container DIV into fullscreen (fs:true); the "خروج از تمام‌صفحه" overlay button appears; exiting returns to normal.
+- (2) RTL: confirmed `document.documentElement.dir === "rtl"` (set on <html> in layout.tsx). Both / and /admin inherit it, so the whole app is right-to-left. Only `dir="ltr"` usages are on LTR content (slugs, filenames, IP, code) which is correct. No layout container is forced LTR. RTL requirement already satisfied.
+- (3) Cross-browser/system data issue: the symptom "video playable but group + custom metadata missing" is the signature of a DATABASE that was reset/recreated while the video FILES (public/videos/) persisted. syncFolderToDb() re-imports those files into the fresh DB with DEFAULT display names and groupId=null — so the video re-appears on the main page (playable) but the original group + display name + description are gone (they lived only in the DB). Checked .gitignore — `db/` is NOT ignored, so git transfers preserve it; the issue arises only if the user copies/moves the project WITHOUT the `db/` folder, runs `db:reset`, or mixes the sandbox preview (sandbox DB) with their local Windows app (local DB).
+- Diagnostics added to admin (src/app/admin/page.tsx) VideosTab + GroupsTab: an `error` state; the refresh function now sets a clear Persian error for 401 ("نشست مدیریت منقضی شده..."), non-ok ("خطا در دریافت..."), or network failure ("ارتباط با سرور ناموفق بود"); a "تازه‌سازی" (Refresh) button with a spinning RefreshCw icon; and a destructive-colored error banner (AlertCircle) so an empty list is never confused with a silent fetch failure. (Focus auto-refresh from Task 12 still active.)
+- Lint clean. dev.log clean. Admin loads (verified "مدیریت ویدئوها" header renders after login).
+
+Stage Summary:
+- Fullscreen: clear labeled "نمایش تمام‌صفحه" + "خروج از تمام‌صفحه" buttons (beginner-friendly).
+- RTL: already RTL on all pages (dir="rtl" on <html>); confirmed.
+- Cross-browser data: explained — transferring the project without the `db/` folder (or running on a separate server) recreates an empty DB and re-imports video FILES with default names + no groups; the groups + custom metadata live only in `db/custom.db` and must travel with the project. Admin now shows explicit error banners + a manual refresh button so fetch failures aren't mistaken for "no data".

@@ -606,26 +606,19 @@ export default function Home() {
                           : "aspect-video w-full",
                       )}
                     />
-                    {/* Fullscreen enlarge / shrink button */}
-                    <button
-                      type="button"
-                      onClick={toggleFullscreen}
-                      aria-label={
-                        isFullscreen ? "خروج از تمام‌صفحه" : "نمایش تمام‌صفحه"
-                      }
-                      title={
-                        isFullscreen
-                          ? "خروج از تمام‌صفحه (Esc)"
-                          : "نمایش تمام‌صفحه"
-                      }
-                      className="absolute right-2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-lg bg-black/55 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
-                    >
-                      {isFullscreen ? (
+                    {/* Prominent EXIT-fullscreen button (only while in fullscreen) */}
+                    {isFullscreen ? (
+                      <button
+                        type="button"
+                        onClick={toggleFullscreen}
+                        aria-label="خروج از تمام‌صفحه"
+                        title="خروج از تمام‌صفحه (Esc)"
+                        className="absolute right-4 top-4 z-30 inline-flex items-center gap-2 rounded-full bg-black/75 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/90"
+                      >
                         <Minimize2 className="h-4 w-4" />
-                      ) : (
-                        <Maximize2 className="h-4 w-4" />
-                      )}
-                    </button>
+                        خروج از تمام‌صفحه
+                      </button>
+                    ) : null}
                   </div>
 
                   {/* Title + meta */}
@@ -690,6 +683,15 @@ export default function Home() {
                   {/* Action buttons */}
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
+                      variant="default"
+                      size="sm"
+                      onClick={toggleFullscreen}
+                      className="gap-1.5"
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                      نمایش تمام‌صفحه
+                    </Button>
+                    <Button
                       variant="secondary"
                       size="sm"
                       onClick={handleCopyLink}
@@ -700,7 +702,7 @@ export default function Home() {
                     </Button>
                     {selected.downloadable ? (
                       <Button
-                        variant="default"
+                        variant="secondary"
                         size="sm"
                         onClick={handleDownload}
                         disabled={downloading}

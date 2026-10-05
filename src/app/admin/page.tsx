@@ -23,6 +23,8 @@ import {
   Download,
   Eye,
   Users,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -412,24 +414,32 @@ function VideosTab() {
   const [videos, setVideos] = React.useState<AdminVideo[]>([]);
   const [groups, setGroups] = React.useState<AdminGroup[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [vRes, gRes] = await Promise.all([
         fetch("/api/admin/videos", { cache: "no-store" }),
         fetch("/api/admin/groups", { cache: "no-store" }),
       ]);
+      if (vRes.status === 401 || gRes.status === 401) {
+        setError("نشست مدیریت منقضی شده است. لطفاً خارج شده و دوباره وارد شوید.");
+        return;
+      }
       if (vRes.ok) {
         const vData = await vRes.json();
         setVideos(vData?.videos ?? []);
+      } else {
+        setError("خطا در دریافت لیست ویدئوها.");
       }
       if (gRes.ok) {
         const gData = await gRes.json();
         setGroups(gData?.groups ?? []);
       }
     } catch {
-      // ignore
+      setError("ارتباط با سرور ناموفق بود.");
     } finally {
       setLoading(false);
     }
@@ -455,7 +465,28 @@ function VideosTab() {
   }, [refresh]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-muted-foreground">
+          مدیریت ویدئوها
+        </h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={refresh}
+          disabled={loading}
+          className="gap-1.5"
+        >
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          تازه‌سازی
+        </Button>
+      </div>
+      {error ? (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      ) : null}
       <UploadCard groups={groups} onUploaded={refresh} />
       <VideosList videos={videos} groups={groups} loading={loading} onChanged={refresh} />
     </div>
@@ -1089,15 +1120,25 @@ function DeleteVideoDialog({
 function GroupsTab() {
   const [groups, setGroups] = React.useState<AdminGroup[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/admin/groups", { cache: "no-store" });
-      const data = await res.json();
-      setGroups(data?.groups ?? []);
+      if (res.status === 401) {
+        setError("نشست مدیریت منقضی شده است. لطفاً خارج شده و دوباره وارد شوید.");
+        return;
+      }
+      if (res.ok) {
+        const data = await res.json();
+        setGroups(data?.groups ?? []);
+      } else {
+        setError("خطا در دریافت لیست گروه‌ها.");
+      }
     } catch {
-      // ignore
+      setError("ارتباط با سرور ناموفق بود.");
     } finally {
       setLoading(false);
     }
@@ -1123,7 +1164,28 @@ function GroupsTab() {
   }, [refresh]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-muted-foreground">
+          مدیریت گروه‌ها
+        </h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={refresh}
+          disabled={loading}
+          className="gap-1.5"
+        >
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          تازه‌سازی
+        </Button>
+      </div>
+      {error ? (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      ) : null}
       <CreateGroupCard onCreated={refresh} />
       <GroupsList groups={groups} loading={loading} onChanged={refresh} />
     </div>
