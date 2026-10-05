@@ -35,6 +35,7 @@ export async function GET(request: Request, { params }: Params) {
       createdAt: v.createdAt.toISOString(),
       groupId: v.groupId,
       groupName: v.group?.name ?? null,
+      downloadable: v.downloadable,
     },
   });
 }
@@ -49,6 +50,7 @@ export async function PATCH(request: Request, { params }: Params) {
     slug?: string;
     description?: string;
     groupId?: string | null;
+    downloadable?: boolean;
   } = {};
   try {
     body = await request.json();
@@ -64,6 +66,7 @@ export async function PATCH(request: Request, { params }: Params) {
     slug?: string;
     description?: string | null;
     groupId?: string | null;
+    downloadable?: boolean;
   } = {};
   if (typeof body.displayName === "string" && body.displayName.trim()) {
     data.displayName = body.displayName.trim();
@@ -104,6 +107,9 @@ export async function PATCH(request: Request, { params }: Params) {
       else data.groupId = null;
     }
   }
+  if (typeof body.downloadable === "boolean") {
+    data.downloadable = body.downloadable;
+  }
   const updated = await db.video.update({ where: { id }, data });
   const url = `/${updated.filePath.split("/").map(encodeURIComponent).join("/")}`;
   return NextResponse.json({
@@ -118,6 +124,7 @@ export async function PATCH(request: Request, { params }: Params) {
       size: updated.size,
       createdAt: updated.createdAt.toISOString(),
       groupId: updated.groupId,
+      downloadable: updated.downloadable,
     },
   });
 }

@@ -15,6 +15,7 @@ import {
   Loader2,
   MonitorPlay,
   Link2,
+  Download,
   FolderOpen,
   AlertCircle,
 } from "lucide-react";
@@ -45,6 +46,7 @@ interface VideoItem {
   modifiedLabel: string;
   createdAt: string;
   groupId: string | null;
+  downloadable: boolean;
 }
 
 interface GroupItem {
@@ -404,6 +406,67 @@ export default function Home() {
     }
   };
 
+  const [downloading, setDownloading] = React.useState(false);
+
+  const handleDownload = async () => {
+    if (!selected || downloading) return;
+    const safeName =
+      (selected.displayName || selected.fileName)
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .trim() || "video";
+    const downloadName = `${safeName}.mp4`;
+
+    const trigger = (blob: Blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = downloadName;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    };
+
+    setDownloading(true);
+    try {
+      // 1) Try the IndexedDB cache first — instant download if cached.
+      let cached: Blob | null = null;
+      try {
+        cached = await getCachedBlob(selected.id);
+      } catch {
+        cached = null;
+      }
+      if (cached) {
+        trigger(cached);
+        toast.success("دانلود از کش لوکال شروع شد", {
+          description: downloadName,
+        });
+        return;
+      }
+      // 2) Not cached — fetch from server, then trigger download (and cache for next time).
+      const tid = toast.loading("در حال آماده‌سازی دانلود...", {
+        description: downloadName,
+      });
+      try {
+        const res = await fetch(selected.url);
+        if (!res.ok) throw new Error("fetch failed");
+        const blob = await res.blob();
+        // best-effort: cache for next time / future plays
+        setCachedBlob(selected.id, blob).catch(() => {});
+        trigger(blob);
+        toast.success("دانلود شروع شد", {
+          id: tid,
+          description: downloadName,
+        });
+      } catch {
+        toast.error("دانلود از سرور ناموفق بود", { id: tid });
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <Toaster richColors position="top-center" />
@@ -513,8 +576,8 @@ export default function Home() {
                     </Button>
                   </div>
 
-                  {/* Copy link button */}
-                  <div>
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant="secondary"
                       size="sm"
@@ -524,6 +587,22 @@ export default function Home() {
                       <Link2 className="h-4 w-4" />
                       کپی لینک ویدئو
                     </Button>
+                    {selected.downloadable ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleDownload}
+                        disabled={downloading}
+                        className="gap-1.5"
+                      >
+                        {downloading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                        دانلود ویدئو
+                      </Button>
+                    ) : null}
                   </div>
                 </motion.div>
               ) : (

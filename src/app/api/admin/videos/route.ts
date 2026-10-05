@@ -34,6 +34,8 @@ export async function POST(request: Request) {
   const slugInput = String(form.get("slug") ?? "").trim();
   const description = String(form.get("description") ?? "").trim();
   const groupIdRaw = String(form.get("groupId") ?? "").trim();
+  const downloadableRaw = String(form.get("downloadable") ?? "").trim();
+  const downloadable = downloadableRaw === "true" || downloadableRaw === "1";
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "فایل ویدئو الزامی است" }, { status: 400 });
@@ -79,6 +81,7 @@ export async function POST(request: Request) {
         filePath: saved.filePath,
         size: saved.size,
         groupId,
+        downloadable,
       },
     });
     const url = `/${saved.filePath.split("/").map(encodeURIComponent).join("/")}`;
@@ -95,6 +98,7 @@ export async function POST(request: Request) {
           size: created.size,
           createdAt: created.createdAt.toISOString(),
           groupId: created.groupId,
+          downloadable: created.downloadable,
         },
       },
       { status: 201 },

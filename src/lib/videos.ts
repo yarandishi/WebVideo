@@ -215,6 +215,7 @@ export interface PublicVideo {
   modifiedLabel: string;
   createdAt: string;
   groupId: string | null;
+  downloadable: boolean;
 }
 
 export interface PublicGroup {
@@ -245,6 +246,7 @@ function toPublicVideo(v: {
   size: number;
   createdAt: Date;
   groupId: string | null;
+  downloadable: boolean;
 }): PublicVideo {
   return {
     id: v.id,
@@ -259,6 +261,7 @@ function toPublicVideo(v: {
     modifiedLabel: formatDate(v.createdAt),
     createdAt: v.createdAt.toISOString(),
     groupId: v.groupId,
+    downloadable: v.downloadable,
   };
 }
 
@@ -343,5 +346,6 @@ export async function listAllVideosForAdmin(): Promise<
     updatedAt: v.updatedAt.toISOString(),
     groupId: v.groupId,
     groupName: v.group?.name ?? null,
+    downloadable: v.downloadable,
   }));
 }

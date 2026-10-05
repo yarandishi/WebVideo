@@ -203,3 +203,29 @@ Stage Summary:
 - All user requirements verified working: /admin route, password login, upload, grouping, editable display name, description, direct links (?v=slug), admin-choosable short slug, IndexedDB caching (blob URL on 2nd view), fully offline (no external fonts/CDNs).
 - Admin password: admin1234 (override via ADMIN_PASSWORD env).
 - No constraint violations found. App ready.
+
+---
+Task ID: 8
+Agent: main (Z.ai Code)
+Task: Add per-video download capability, controlled by an admin toggle; when enabled and the video is cached in IndexedDB, download should happen quickly from the local cache.
+
+Work Log:
+- Schema: added `downloadable Boolean @default(false)` to Video model in prisma/schema.prisma; ran `bun run db:push` (regenerated Prisma client).
+- src/lib/videos.ts: added `downloadable: boolean` to PublicVideo interface, toPublicVideo input/output, and listAllVideosForAdmin return.
+- src/app/api/admin/videos/route.ts (POST): parse `downloadable` from FormData; set on create; return in response.
+- src/app/api/admin/videos/[id]/route.ts: GET returns downloadable; PATCH accepts `downloadable` boolean and updates; returns downloadable.
+- src/app/page.tsx: added `downloadable` to VideoItem; added Download icon import; added `handleDownload` that (1) tries IndexedDB cache first → if hit, triggers `<a download>` from blob URL + toast "دانلود از کش لوکال شروع شد"; (2) else fetches the file as blob, caches it (best-effort), triggers download + toast. Added "دانلود ویدئو" button shown only when selected.downloadable === true, with a `downloading` spinner state.
+- src/app/admin/page.tsx: added `downloadable` to AdminVideo; imported Switch + Download icon; added downloadable state + reset to UploadCard with a Switch row + appends to FormData; added downloadable state + Switch row + PATCH body to EditDialog (fixed body type to Record<string, string | boolean>); added "قابل دانلود" Badge on the VideoRow when downloadable.
+- After schema change, the running dev server had a STALE PrismaClient (predated the downloadable field) → PATCH threw `Unknown argument groupId` and the admin list returned downloadable=undefined (Switch showed uncontrolled→controlled warning). Fixed by killing the old dev processes, clearing .next cache, and restarting with nohup so a fresh PrismaClient (knowing downloadable) was loaded. (Note: `setsid ... &` did not persist; `nohup bun run dev &` worked.)
+- Lint clean. dev.log clean (200s).
+- Agent-browser E2E:
+  * /admin login (admin1234) → dashboard.
+  * Edit sample-lesson-1 → toggle "قابل دانلود" Switch on → Save → PATCH 200, dialog closed, badge "قابل دانلود" appears on the row.
+  * Main page /?v=sample-lesson-1 → "دانلود ویدئو" button present; play to cache; switching away+back shows blob: src (cached).
+  * Click "دانلود ویدئو" → toast "دانلود از کش لوکال شروع شد" AND no new network fetch to /videos/sample-lesson-1.mp4 after click → download came entirely from IndexedDB cache.
+  * /?v=sample-lesson-2 (downloadable=false) → NO download button (only "کپی لینک") — toggle correctly hides the button.
+
+Stage Summary:
+- Per-video download toggle fully working: admin enables/disables via Switch in upload + edit; main page shows "دانلود ویدئو" only when enabled; download uses IndexedDB cache (instant, no network) when available, else fetches then downloads (and caches for next time).
+- Admin password: admin1234. Offline constraint intact (no external requests).
+- No issues.

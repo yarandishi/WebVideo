@@ -20,6 +20,7 @@ import {
   HardDrive,
   Calendar,
   Link2,
+  Download,
 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -83,6 +85,7 @@ interface AdminVideo {
   createdAt: string;
   groupId: string | null;
   groupName: string | null;
+  downloadable: boolean;
 }
 
 /* ----------------------------- Page ----------------------------- */
@@ -336,6 +339,7 @@ function UploadCard({
   const [slug, setSlug] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [groupId, setGroupId] = React.useState<string>("none");
+  const [downloadable, setDownloadable] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
 
   const reset = () => {
@@ -344,6 +348,7 @@ function UploadCard({
     setSlug("");
     setDescription("");
     setGroupId("none");
+    setDownloadable(false);
   };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -378,6 +383,7 @@ function UploadCard({
       if (description.trim()) form.append("description", description.trim());
       if (groupId && groupId !== "none")
         form.append("groupId", groupId);
+      form.append("downloadable", String(downloadable));
       const res = await fetch("/api/admin/videos", {
         method: "POST",
         body: form,
@@ -473,6 +479,20 @@ function UploadCard({
               disabled={uploading}
               className="min-h-20"
             />
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border border-border/60 p-3 sm:col-span-2">
+            <Switch
+              id="downloadable"
+              checked={downloadable}
+              onCheckedChange={setDownloadable}
+              disabled={uploading}
+            />
+            <Label htmlFor="downloadable" className="cursor-pointer">
+              قابل دانلود
+              <span className="block text-xs font-normal text-muted-foreground">
+                اگر فعال باشد، کاربر می‌تواند این ویدئو را دانلود کند
+              </span>
+            </Label>
           </div>
           <div className="sm:col-span-2">
             <Button type="submit" disabled={uploading} className="gap-1.5">
@@ -620,6 +640,12 @@ function VideoRow({
                   بدون گروه
                 </Badge>
               )}
+              {v.downloadable ? (
+                <Badge variant="secondary" className="gap-1 text-[10px]">
+                  <Download className="h-3 w-3" />
+                  قابل دانلود
+                </Badge>
+              ) : null}
             </div>
             {v.description ? (
               <p className="line-clamp-2 text-xs text-muted-foreground">
@@ -703,6 +729,7 @@ function EditVideoDialog({
   const [slug, setSlug] = React.useState(video.slug);
   const [description, setDescription] = React.useState(video.description ?? "");
   const [groupId, setGroupId] = React.useState<string>(video.groupId ?? "none");
+  const [downloadable, setDownloadable] = React.useState(video.downloadable);
   const [saving, setSaving] = React.useState(false);
   const [open, setOpen] = React.useState(true);
 
@@ -710,13 +737,15 @@ function EditVideoDialog({
     e.preventDefault();
     setSaving(true);
     try {
-      const body: Record<string, string> = {};
+      const body: Record<string, string | boolean> = {};
       if (displayName.trim() && displayName !== video.displayName)
         body.displayName = displayName.trim();
       if (slug.trim() && slug !== video.slug) body.slug = slug.trim();
       if (description !== (video.description ?? ""))
         body.description = description;
       body.groupId = groupId === "none" ? "" : groupId;
+      if (downloadable !== video.downloadable)
+        body.downloadable = downloadable;
       const res = await fetch(`/api/admin/videos/${video.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -800,6 +829,20 @@ function EditVideoDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border border-border/60 p-3">
+            <Switch
+              id="e-downloadable"
+              checked={downloadable}
+              onCheckedChange={setDownloadable}
+              disabled={saving}
+            />
+            <Label htmlFor="e-downloadable" className="cursor-pointer">
+              قابل دانلود
+              <span className="block text-xs font-normal text-muted-foreground">
+                اگر فعال باشد، کاربر می‌تواند این ویدئو را دانلود کند
+              </span>
+            </Label>
           </div>
           <DialogFooter>
             <DialogClose asChild>

@@ -49,6 +49,7 @@ model Video {
   description String?
   filePath    String
   size        Int      @default(0)
+  downloadable Boolean @default(false)
   groupId     String?
   group       Group?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())

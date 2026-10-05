@@ -1,0 +1,1329 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import Link from "next/link";
+     5→import { motion } from "framer-motion";
+     6→import {
+     7→  ShieldCheck,
+     8→  LogOut,
+     9→  ExternalLink,
+    10→  Upload,
+    11→  Trash2,
+    12→  Pencil,
+    13→  Copy,
+    14→  FolderOpen,
+    15→  Film,
+    16→  Loader2,
+    17→  Save,
+    18→  Plus,
+    19→  AlertTriangle,
+    20→  HardDrive,
+    21→  Calendar,
+    22→  Link2,
+    23→} from "lucide-react";
+    24→import { Toaster } from "@/components/ui/sonner";
+    25→import { toast } from "sonner";
+    26→import { Button } from "@/components/ui/button";
+    27→import { Input } from "@/components/ui/input";
+    28→import { Textarea } from "@/components/ui/textarea";
+    29→import { Label } from "@/components/ui/label";
+    30→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+    31→import { Badge } from "@/components/ui/badge";
+    32→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    33→import {
+    34→  Select,
+    35→  SelectContent,
+    36→  SelectItem,
+    37→  SelectTrigger,
+    38→  SelectValue,
+    39→} from "@/components/ui/select";
+    40→import {
+    41→  Dialog,
+    42→  DialogContent,
+    43→  DialogDescription,
+    44→  DialogFooter,
+    45→  DialogHeader,
+    46→  DialogTitle,
+    47→  DialogClose,
+    48→} from "@/components/ui/dialog";
+    49→import {
+    50→  AlertDialog,
+    51→  AlertDialogAction,
+    52→  AlertDialogCancel,
+    53→  AlertDialogContent,
+    54→  AlertDialogDescription,
+    55→  AlertDialogFooter,
+    56→  AlertDialogHeader,
+    57→  AlertDialogTitle,
+    58→  AlertDialogTrigger,
+    59→} from "@/components/ui/alert-dialog";
+    60→import { cn } from "@/lib/utils";
+    61→import { formatBytes } from "@/lib/format";
+    62→
+    63→/* ----------------------------- Types ----------------------------- */
+    64→
+    65→interface AdminGroup {
+    66→  id: string;
+    67→  name: string;
+    68→  slug: string;
+    69→  order: number;
+    70→  videoCount?: number;
+    71→}
+    72→
+    73→interface AdminVideo {
+    74→  id: string;
+    75→  displayName: string;
+    76→  slug: string;
+    77→  description: string | null;
+    78→  fileName: string;
+    79→  filePath: string;
+    80→  url: string;
+    81→  size: number;
+    82→  sizeLabel: string;
+    83→  createdAt: string;
+    84→  groupId: string | null;
+    85→  groupName: string | null;
+    86→}
+    87→
+    88→/* ----------------------------- Page ----------------------------- */
+    89→
+    90→export default function AdminPage() {
+    91→  const [authed, setAuthed] = React.useState<boolean | null>(null);
+    92→
+    93→  const checkSession = React.useCallback(async () => {
+    94→    try {
+    95→      const res = await fetch("/api/admin/session", { cache: "no-store" });
+    96→      const data = await res.json();
+    97→      setAuthed(Boolean(data?.authenticated));
+    98→    } catch {
+    99→      setAuthed(false);
+   100→    }
+   101→  }, []);
+   102→
+   103→  React.useEffect(() => {
+   104→    checkSession();
+   105→  }, [checkSession]);
+   106→
+   107→  return (
+   108→    <div className="flex min-h-screen flex-col bg-background text-foreground">
+   109→      <Toaster richColors position="top-center" />
+   110→      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-md">
+   111→        <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
+   112→          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+   113→            <ShieldCheck className="h-5 w-5" />
+   114→          </div>
+   115→          <div className="flex flex-col">
+   116→            <h1 className="text-base font-bold leading-tight sm:text-lg">
+   117→              پنل مدیریت ویدئو
+   118→            </h1>
+   119→            <p className="hidden text-xs text-muted-foreground sm:block">
+   120→              مدیریت ویدئوها و گروه‌ها
+   121→            </p>
+   122→          </div>
+   123→          <div className="mr-auto flex items-center gap-2">
+   124→            {authed ? (
+   125→              <>
+   126→                <Button asChild variant="outline" size="sm" className="gap-1.5">
+   127→                  <Link href="/" target="_blank" rel="noopener noreferrer">
+   128→                    <ExternalLink className="h-4 w-4" />
+   129→                    مشاهده سایت
+   130→                  </Link>
+   131→                </Button>
+   132→                <Button
+   133→                  variant="ghost"
+   134→                  size="sm"
+   135→                  className="gap-1.5"
+   136→                  onClick={async () => {
+   137→                    try {
+   138→                      await fetch("/api/admin/logout", { method: "POST" });
+   139→                    } catch {
+   140→                      // ignore
+   141→                    }
+   142→                    setAuthed(false);
+   143→                  }}
+   144→                >
+   145→                  <LogOut className="h-4 w-4" />
+   146→                  خروج
+   147→                </Button>
+   148→              </>
+   149→            ) : null}
+   150→          </div>
+   151→        </div>
+   152→      </header>
+   153→
+   154→      <main className="flex-1 px-4 py-6 sm:px-6">
+   155→        <div className="mx-auto w-full max-w-5xl">
+   156→          {authed === null ? (
+   157→            <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
+   158→              <Loader2 className="h-8 w-8 animate-spin" />
+   159→              <p className="text-sm">در حال بررسی نشست...</p>
+   160→            </div>
+   161→          ) : authed ? (
+   162→            <Dashboard />
+   163→          ) : (
+   164→            <LoginCard onLoginSuccess={() => setAuthed(true)} />
+   165→          )}
+   166→        </div>
+   167→      </main>
+   168→
+   169→      <footer className="mt-auto border-t border-border/70 bg-background/80">
+   170→        <div className="flex h-12 items-center justify-center px-4 text-center text-xs text-muted-foreground">
+   171→          پنل مدیریت کتابخانه ویدئو — فقط برای مدیران
+   172→        </div>
+   173→      </footer>
+   174→    </div>
+   175→  );
+   176→}
+   177→
+   178→/* ----------------------------- Login ----------------------------- */
+   179→
+   180→function LoginCard({ onLoginSuccess }: { onLoginSuccess: () => void }) {
+   181→  const [password, setPassword] = React.useState("");
+   182→  const [loading, setLoading] = React.useState(false);
+   183→  const [error, setError] = React.useState<string | null>(null);
+   184→
+   185→  const submit = async (e: React.FormEvent) => {
+   186→    e.preventDefault();
+   187→    setLoading(true);
+   188→    setError(null);
+   189→    try {
+   190→      const res = await fetch("/api/admin/login", {
+   191→        method: "POST",
+   192→        headers: { "Content-Type": "application/json" },
+   193→        body: JSON.stringify({ password }),
+   194→      });
+   195→      const data = await res.json().catch(() => ({}));
+   196→      if (!res.ok) {
+   197→        setError(data?.error || "ورود ناموفق بود");
+   198→        toast.error(data?.error || "ورود ناموفق بود");
+   199→        return;
+   200→      }
+   201→      toast.success("خوش آمدید");
+   202→      onLoginSuccess();
+   203→    } catch {
+   204→      setError("ارتباط با سرور ناموفق بود");
+   205→      toast.error("ارتباط با سرور ناموفق بود");
+   206→    } finally {
+   207→      setLoading(false);
+   208→    }
+   209→  };
+   210→
+   211→  return (
+   212→    <motion.div
+   213→      initial={{ opacity: 0, y: 8 }}
+   214→      animate={{ opacity: 1, y: 0 }}
+   215→      transition={{ duration: 0.2 }}
+   216→      className="flex justify-center py-10"
+   217→    >
+   218→      <Card className="w-full max-w-md shadow-md">
+   219→        <CardHeader>
+   220→          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+   221→            <ShieldCheck className="h-6 w-6" />
+   222→          </div>
+   223→          <CardTitle className="text-lg">ورود به پنل مدیریت</CardTitle>
+   224→          <CardDescription>برای ادامه، رمز مدیریت را وارد کنید.</CardDescription>
+   225→        </CardHeader>
+   226→        <CardContent>
+   227→          <form onSubmit={submit} className="space-y-4">
+   228→            <div className="space-y-2">
+   229→              <Label htmlFor="password">رمز مدیریت</Label>
+   230→              <Input
+   231→                id="password"
+   232→                type="password"
+   233→                value={password}
+   234→                onChange={(e) => setPassword(e.target.value)}
+   235→                placeholder="رمز را وارد کنید"
+   236→                autoFocus
+   237→                disabled={loading}
+   238→                aria-invalid={!!error}
+   239→              />
+   240→              {error ? (
+   241→                <p className="text-xs text-destructive">{error}</p>
+   242→              ) : null}
+   243→            </div>
+   244→            <Button type="submit" className="w-full" disabled={loading}>
+   245→              {loading ? (
+   246→                <>
+   247→                  <Loader2 className="h-4 w-4 animate-spin" />
+   248→                  در حال ورود...
+   249→                </>
+   250→              ) : (
+   251→                "ورود"
+   252→              )}
+   253→            </Button>
+   254→          </form>
+   255→        </CardContent>
+   256→      </Card>
+   257→    </motion.div>
+   258→  );
+   259→}
+   260→
+   261→/* ----------------------------- Dashboard ----------------------------- */
+   262→
+   263→function Dashboard() {
+   264→  return (
+   265→    <Tabs defaultValue="videos" className="gap-4">
+   266→      <TabsList>
+   267→        <TabsTrigger value="videos" className="gap-1.5">
+   268→          <Film className="h-4 w-4" />
+   269→          ویدئوها
+   270→        </TabsTrigger>
+   271→        <TabsTrigger value="groups" className="gap-1.5">
+   272→          <FolderOpen className="h-4 w-4" />
+   273→          گروه‌ها
+   274→        </TabsTrigger>
+   275→      </TabsList>
+   276→      <TabsContent value="videos">
+   277→        <VideosTab />
+   278→      </TabsContent>
+   279→      <TabsContent value="groups">
+   280→        <GroupsTab />
+   281→      </TabsContent>
+   282→    </Tabs>
+   283→  );
+   284→}
+   285→
+   286→/* ----------------------------- Videos Tab ----------------------------- */
+   287→
+   288→function VideosTab() {
+   289→  const [videos, setVideos] = React.useState<AdminVideo[]>([]);
+   290→  const [groups, setGroups] = React.useState<AdminGroup[]>([]);
+   291→  const [loading, setLoading] = React.useState(true);
+   292→
+   293→  const refresh = React.useCallback(async () => {
+   294→    setLoading(true);
+   295→    try {
+   296→      const [vRes, gRes] = await Promise.all([
+   297→        fetch("/api/admin/videos", { cache: "no-store" }),
+   298→        fetch("/api/admin/groups", { cache: "no-store" }),
+   299→      ]);
+   300→      if (vRes.ok) {
+   301→        const vData = await vRes.json();
+   302→        setVideos(vData?.videos ?? []);
+   303→      }
+   304→      if (gRes.ok) {
+   305→        const gData = await gRes.json();
+   306→        setGroups(gData?.groups ?? []);
+   307→      }
+   308→    } catch {
+   309→      // ignore
+   310→    } finally {
+   311→      setLoading(false);
+   312→    }
+   313→  }, []);
+   314→
+   315→  React.useEffect(() => {
+   316→    refresh();
+   317→  }, [refresh]);
+   318→
+   319→  return (
+   320→    <div className="space-y-6">
+   321→      <UploadCard groups={groups} onUploaded={refresh} />
+   322→      <VideosList videos={videos} groups={groups} loading={loading} onChanged={refresh} />
+   323→    </div>
+   324→  );
+   325→}
+   326→
+   327→function UploadCard({
+   328→  groups,
+   329→  onUploaded,
+   330→}: {
+   331→  groups: AdminGroup[];
+   332→  onUploaded: () => void;
+   333→}) {
+   334→  const [file, setFile] = React.useState<File | null>(null);
+   335→  const [displayName, setDisplayName] = React.useState("");
+   336→  const [slug, setSlug] = React.useState("");
+   337→  const [description, setDescription] = React.useState("");
+   338→  const [groupId, setGroupId] = React.useState<string>("none");
+   339→  const [uploading, setUploading] = React.useState(false);
+   340→
+   341→  const reset = () => {
+   342→    setFile(null);
+   343→    setDisplayName("");
+   344→    setSlug("");
+   345→    setDescription("");
+   346→    setGroupId("none");
+   347→  };
+   348→
+   349→  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+   350→    const f = e.target.files?.[0] ?? null;
+   351→    setFile(f);
+   352→    if (f && !displayName) {
+   353→      // pre-fill displayName from filename (strip extension)
+   354→      setDisplayName(f.name.replace(/\.mp4$/i, ""));
+   355→    }
+   356→  };
+   357→
+   358→  const submit = async (e: React.FormEvent) => {
+   359→    e.preventDefault();
+   360→    if (!file) {
+   361→      toast.error("فایل ویدئو را انتخاب کنید");
+   362→      return;
+   363→    }
+   364→    if (!displayName.trim()) {
+   365→      toast.error("نام نمایشی را وارد کنید");
+   366→      return;
+   367→    }
+   368→    if (!file.name.toLowerCase().endsWith(".mp4")) {
+   369→      toast.error("فقط فایل‌های mp4 پذیرفته می‌شوند");
+   370→      return;
+   371→    }
+   372→    setUploading(true);
+   373→    try {
+   374→      const form = new FormData();
+   375→      form.append("file", file);
+   376→      form.append("displayName", displayName.trim());
+   377→      if (slug.trim()) form.append("slug", slug.trim());
+   378→      if (description.trim()) form.append("description", description.trim());
+   379→      if (groupId && groupId !== "none")
+   380→        form.append("groupId", groupId);
+   381→      const res = await fetch("/api/admin/videos", {
+   382→        method: "POST",
+   383→        body: form,
+   384→      });
+   385→      const data = await res.json().catch(() => ({}));
+   386→      if (!res.ok) {
+   387→        toast.error(data?.error || "آپلود ناموفق بود");
+   388→        return;
+   389→      }
+   390→      toast.success("ویدئو با موفقیت آپلود شد");
+   391→      reset();
+   392→      onUploaded();
+   393→    } catch {
+   394→      toast.error("ارتباط با سرور ناموفق بود");
+   395→    } finally {
+   396→      setUploading(false);
+   397→    }
+   398→  };
+   399→
+   400→  return (
+   401→    <Card>
+   402→      <CardHeader>
+   403→        <CardTitle className="flex items-center gap-2 text-base">
+   404→          <Upload className="h-5 w-5" />
+   405→          آپلود ویدئوی جدید
+   406→        </CardTitle>
+   407→        <CardDescription>
+   408→          فایل را انتخاب کنید و اطلاعات را تکمیل کنید.
+   409→        </CardDescription>
+   410→      </CardHeader>
+   411→      <CardContent>
+   412→        <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+   413→          <div className="space-y-2 sm:col-span-2">
+   414→            <Label htmlFor="file">فایل ویدئو (mp4)</Label>
+   415→            <Input
+   416→              id="file"
+   417→              type="file"
+   418→              accept="video/mp4"
+   419→              onChange={onFileChange}
+   420→              disabled={uploading}
+   421→            />
+   422→            {file ? (
+   423→              <p className="text-xs text-muted-foreground">
+   424→                فایل: <span dir="ltr">{file.name}</span> —{" "}
+   425→                {formatBytes(file.size)}
+   426→              </p>
+   427→            ) : null}
+   428→          </div>
+   429→          <div className="space-y-2">
+   430→            <Label htmlFor="displayName">نام نمایشی</Label>
+   431→            <Input
+   432→              id="displayName"
+   433→              value={displayName}
+   434→              onChange={(e) => setDisplayName(e.target.value)}
+   435→              placeholder="مثلاً: درس اول"
+   436→              disabled={uploading}
+   437→            />
+   438→          </div>
+   439→          <div className="space-y-2">
+   440→            <Label htmlFor="slug">اسلاگ (اختیاری)</Label>
+   441→            <Input
+   442→              id="slug"
+   443→              value={slug}
+   444→              onChange={(e) => setSlug(e.target.value)}
+   445→              placeholder="خودکار از نام"
+   446→              disabled={uploading}
+   447→              dir="ltr"
+   448→            />
+   449→          </div>
+   450→          <div className="space-y-2">
+   451→            <Label htmlFor="group">گروه</Label>
+   452→            <Select value={groupId} onValueChange={setGroupId} disabled={uploading}>
+   453→              <SelectTrigger id="group" className="w-full">
+   454→                <SelectValue placeholder="بدون گروه" />
+   455→              </SelectTrigger>
+   456→              <SelectContent>
+   457→                <SelectItem value="none">بدون گروه</SelectItem>
+   458→                {groups.map((g) => (
+   459→                  <SelectItem key={g.id} value={g.id}>
+   460→                    {g.name}
+   461→                  </SelectItem>
+   462→                ))}
+   463→              </SelectContent>
+   464→            </Select>
+   465→          </div>
+   466→          <div className="space-y-2 sm:col-span-2">
+   467→            <Label htmlFor="description">توضیحات (اختیاری)</Label>
+   468→            <Textarea
+   469→              id="description"
+   470→              value={description}
+   471→              onChange={(e) => setDescription(e.target.value)}
+   472→              placeholder="توضیح کوتاه درباره ویدئو..."
+   473→              disabled={uploading}
+   474→              className="min-h-20"
+   475→            />
+   476→          </div>
+   477→          <div className="sm:col-span-2">
+   478→            <Button type="submit" disabled={uploading} className="gap-1.5">
+   479→              {uploading ? (
+   480→                <>
+   481→                  <Loader2 className="h-4 w-4 animate-spin" />
+   482→                  در حال آپلود...
+   483→                </>
+   484→              ) : (
+   485→                <>
+   486→                  <Upload className="h-4 w-4" />
+   487→                  آپلود
+   488→                </>
+   489→              )}
+   490→            </Button>
+   491→          </div>
+   492→        </form>
+   493→      </CardContent>
+   494→    </Card>
+   495→  );
+   496→}
+   497→
+   498→function VideosList({
+   499→  videos,
+   500→  groups,
+   501→  loading,
+   502→  onChanged,
+   503→}: {
+   504→  videos: AdminVideo[];
+   505→  groups: AdminGroup[];
+   506→  loading: boolean;
+   507→  onChanged: () => void;
+   508→}) {
+   509→  const [editing, setEditing] = React.useState<AdminVideo | null>(null);
+   510→  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+   511→
+   512→  if (loading) {
+   513→    return (
+   514→      <Card>
+   515→        <CardContent className="py-10">
+   516→          <div className="flex flex-col items-center gap-3 text-muted-foreground">
+   517→            <Loader2 className="h-6 w-6 animate-spin" />
+   518→            <p className="text-sm">در حال بارگذاری...</p>
+   519→          </div>
+   520→        </CardContent>
+   521→      </Card>
+   522→    );
+   523→  }
+   524→  if (videos.length === 0) {
+   525→    return (
+   526→      <Card>
+   527→        <CardContent className="py-10 text-center">
+   528→          <Film className="mx-auto h-10 w-10 text-muted-foreground/50" />
+   529→          <p className="mt-3 text-sm text-muted-foreground">
+   530→            هنوز ویدئویی ثبت نشده است.
+   531→          </p>
+   532→        </CardContent>
+   533→      </Card>
+   534→    );
+   535→  }
+   536→
+   537→  return (
+   538→    <div className="space-y-3">
+   539→      {videos.map((v) => (
+   540→        <VideoRow
+   541→          key={v.id}
+   542→          v={v}
+   543→          groups={groups}
+   544→          onEdit={() => setEditing(v)}
+   545→          onDelete={() => setDeletingId(v.id)}
+   546→        />
+   547→      ))}
+   548→      {editing ? (
+   549→        <EditVideoDialog
+   550→          video={editing}
+   551→          groups={groups}
+   552→          onClose={() => setEditing(null)}
+   553→          onSaved={() => {
+   554→            setEditing(null);
+   555→            onChanged();
+   556→          }}
+   557→        />
+   558→      ) : null}
+   559→      <DeleteVideoDialog
+   560→        videoId={deletingId}
+   561→        onClose={() => setDeletingId(null)}
+   562→        onDeleted={() => {
+   563→          setDeletingId(null);
+   564→          onChanged();
+   565→        }}
+   566→      />
+   567→    </div>
+   568→  );
+   569→}
+   570→
+   571→function VideoRow({
+   572→  v,
+   573→  groups,
+   574→  onEdit,
+   575→  onDelete,
+   576→}: {
+   577→  v: AdminVideo;
+   578→  groups: AdminGroup[];
+   579→  onEdit: () => void;
+   580→  onDelete: () => void;
+   581→}) {
+   582→  const [copied, setCopied] = React.useState(false);
+   583→  const origin =
+   584→    typeof window !== "undefined" ? window.location.origin : "";
+   585→  const link = `${origin}/?v=${encodeURIComponent(v.slug)}`;
+   586→
+   587→  const copyLink = async () => {
+   588→    try {
+   589→      await navigator.clipboard.writeText(link);
+   590→      setCopied(true);
+   591→      toast("لینک کپی شد");
+   592→      setTimeout(() => setCopied(false), 1500);
+   593→    } catch {
+   594→      toast.error("کپی ناموفق بود");
+   595→    }
+   596→  };
+   597→
+   598→  return (
+   599→    <Card>
+   600→      <CardContent className="p-4">
+   601→        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+   602→          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+   603→            <Film className="h-5 w-5" />
+   604→          </div>
+   605→          <div className="min-w-0 flex-1 space-y-1.5">
+   606→            <div className="flex flex-wrap items-center gap-2">
+   607→              <h4 className="text-sm font-semibold leading-tight">
+   608→                {v.displayName}
+   609→              </h4>
+   610→              <Badge variant="secondary" className="text-[10px]" dir="ltr">
+   611→                {v.slug}
+   612→              </Badge>
+   613→              {v.groupName ? (
+   614→                <Badge variant="outline" className="gap-1 text-[10px]">
+   615→                  <FolderOpen className="h-3 w-3" />
+   616→                  {v.groupName}
+   617→                </Badge>
+   618→              ) : (
+   619→                <Badge variant="outline" className="text-[10px]">
+   620→                  بدون گروه
+   621→                </Badge>
+   622→              )}
+   623→            </div>
+   624→            {v.description ? (
+   625→              <p className="line-clamp-2 text-xs text-muted-foreground">
+   626→                {v.description}
+   627→              </p>
+   628→            ) : null}
+   629→            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+   630→              <span className="inline-flex items-center gap-1">
+   631→                <HardDrive className="h-3 w-3" />
+   632→                {v.sizeLabel}
+   633→              </span>
+   634→              <span className="inline-flex items-center gap-1">
+   635→                <Calendar className="h-3 w-3" />
+   636→                {new Date(v.createdAt).toLocaleDateString("fa-IR")}
+   637→              </span>
+   638→              <span className="inline-flex items-center gap-1" dir="ltr">
+   639→                <Link2 className="h-3 w-3" />
+   640→                <span className="truncate max-w-[200px]">{v.fileName}</span>
+   641→              </span>
+   642→            </div>
+   643→            <div className="flex items-center gap-2 pt-1">
+   644→              <Input
+   645→                readOnly
+   646→                value={link}
+   647→                className="h-8 text-[11px]"
+   648→                dir="ltr"
+   649→                aria-label="لینک مستقیم"
+   650→              />
+   651→              <Button
+   652→                type="button"
+   653→                variant="outline"
+   654→                size="icon"
+   655→                className="h-8 w-8 shrink-0"
+   656→                onClick={copyLink}
+   657→                title="کپی لینک"
+   658→              >
+   659→                <Copy className={cn("h-4 w-4", copied && "text-primary")} />
+   660→              </Button>
+   661→            </div>
+   662→          </div>
+   663→          <div className="flex shrink-0 gap-2">
+   664→            <Button
+   665→              type="button"
+   666→              variant="outline"
+   667→              size="sm"
+   668→              className="gap-1"
+   669→              onClick={onEdit}
+   670→            >
+   671→              <Pencil className="h-4 w-4" />
+   672→              ویرایش
+   673→            </Button>
+   674→            <Button
+   675→              type="button"
+   676→              variant="destructive"
+   677→              size="sm"
+   678→              className="gap-1"
+   679→              onClick={onDelete}
+   680→            >
+   681→              <Trash2 className="h-4 w-4" />
+   682→              حذف
+   683→            </Button>
+   684→          </div>
+   685→        </div>
+   686→      </CardContent>
+   687→    </Card>
+   688→  );
+   689→}
+   690→
+   691→function EditVideoDialog({
+   692→  video,
+   693→  groups,
+   694→  onClose,
+   695→  onSaved,
+   696→}: {
+   697→  video: AdminVideo;
+   698→  groups: AdminGroup[];
+   699→  onClose: () => void;
+   700→  onSaved: () => void;
+   701→}) {
+   702→  const [displayName, setDisplayName] = React.useState(video.displayName);
+   703→  const [slug, setSlug] = React.useState(video.slug);
+   704→  const [description, setDescription] = React.useState(video.description ?? "");
+   705→  const [groupId, setGroupId] = React.useState<string>(video.groupId ?? "none");
+   706→  const [saving, setSaving] = React.useState(false);
+   707→  const [open, setOpen] = React.useState(true);
+   708→
+   709→  const submit = async (e: React.FormEvent) => {
+   710→    e.preventDefault();
+   711→    setSaving(true);
+   712→    try {
+   713→      const body: Record<string, string> = {};
+   714→      if (displayName.trim() && displayName !== video.displayName)
+   715→        body.displayName = displayName.trim();
+   716→      if (slug.trim() && slug !== video.slug) body.slug = slug.trim();
+   717→      if (description !== (video.description ?? ""))
+   718→        body.description = description;
+   719→      body.groupId = groupId === "none" ? "" : groupId;
+   720→      const res = await fetch(`/api/admin/videos/${video.id}`, {
+   721→        method: "PATCH",
+   722→        headers: { "Content-Type": "application/json" },
+   723→        body: JSON.stringify(body),
+   724→      });
+   725→      const data = await res.json().catch(() => ({}));
+   726→      if (!res.ok) {
+   727→        toast.error(data?.error || "ذخیره ناموفق بود");
+   728→        return;
+   729→      }
+   730→      toast.success("تغییرات ذخیره شد");
+   731→      onSaved();
+   732→      setOpen(false);
+   733→      onClose();
+   734→    } catch {
+   735→      toast.error("ارتباط با سرور ناموفق بود");
+   736→    } finally {
+   737→      setSaving(false);
+   738→    }
+   739→  };
+   740→
+   741→  return (
+   742→    <Dialog
+   743→      open={open}
+   744→      onOpenChange={(o) => {
+   745→        if (!o) {
+   746→          setOpen(false);
+   747→          onClose();
+   748→        }
+   749→      }}
+   750→    >
+   751→      <DialogContent>
+   752→        <DialogHeader>
+   753→          <DialogTitle>ویرایش ویدئو</DialogTitle>
+   754→          <DialogDescription>
+   755→            تغییر اطلاعات نمایشی، اسلاگ، توضیحات یا گروه.
+   756→          </DialogDescription>
+   757→        </DialogHeader>
+   758→        <form onSubmit={submit} className="space-y-4">
+   759→          <div className="space-y-2">
+   760→            <Label htmlFor="e-displayName">نام نمایشی</Label>
+   761→            <Input
+   762→              id="e-displayName"
+   763→              value={displayName}
+   764→              onChange={(e) => setDisplayName(e.target.value)}
+   765→              disabled={saving}
+   766→            />
+   767→          </div>
+   768→          <div className="space-y-2">
+   769→            <Label htmlFor="e-slug">اسلاگ</Label>
+   770→            <Input
+   771→              id="e-slug"
+   772→              value={slug}
+   773→              onChange={(e) => setSlug(e.target.value)}
+   774→              disabled={saving}
+   775→              dir="ltr"
+   776→            />
+   777→          </div>
+   778→          <div className="space-y-2">
+   779→            <Label htmlFor="e-description">توضیحات</Label>
+   780→            <Textarea
+   781→              id="e-description"
+   782→              value={description}
+   783→              onChange={(e) => setDescription(e.target.value)}
+   784→              disabled={saving}
+   785→              className="min-h-20"
+   786→            />
+   787→          </div>
+   788→          <div className="space-y-2">
+   789→            <Label htmlFor="e-group">گروه</Label>
+   790→            <Select value={groupId} onValueChange={setGroupId} disabled={saving}>
+   791→              <SelectTrigger id="e-group" className="w-full">
+   792→                <SelectValue placeholder="بدون گروه" />
+   793→              </SelectTrigger>
+   794→              <SelectContent>
+   795→                <SelectItem value="none">بدون گروه</SelectItem>
+   796→                {groups.map((g) => (
+   797→                  <SelectItem key={g.id} value={g.id}>
+   798→                    {g.name}
+   799→                  </SelectItem>
+   800→                ))}
+   801→              </SelectContent>
+   802→            </Select>
+   803→          </div>
+   804→          <DialogFooter>
+   805→            <DialogClose asChild>
+   806→              <Button type="button" variant="outline" disabled={saving}>
+   807→                انصراف
+   808→              </Button>
+   809→            </DialogClose>
+   810→            <Button type="submit" disabled={saving} className="gap-1.5">
+   811→              {saving ? (
+   812→                <Loader2 className="h-4 w-4 animate-spin" />
+   813→              ) : (
+   814→                <Save className="h-4 w-4" />
+   815→              )}
+   816→              ذخیره
+   817→            </Button>
+   818→          </DialogFooter>
+   819→        </form>
+   820→      </DialogContent>
+   821→    </Dialog>
+   822→  );
+   823→}
+   824→
+   825→function DeleteVideoDialog({
+   826→  videoId,
+   827→  onClose,
+   828→  onDeleted,
+   829→}: {
+   830→  videoId: string | null;
+   831→  onClose: () => void;
+   832→  onDeleted: () => void;
+   833→}) {
+   834→  const [deleting, setDeleting] = React.useState(false);
+   835→  const [open, setOpen] = React.useState(false);
+   836→
+   837→  React.useEffect(() => {
+   838→    setOpen(videoId !== null);
+   839→  }, [videoId]);
+   840→
+   841→  const confirm = async () => {
+   842→    if (!videoId) return;
+   843→    setDeleting(true);
+   844→    try {
+   845→      const res = await fetch(`/api/admin/videos/${videoId}`, {
+   846→        method: "DELETE",
+   847→      });
+   848→      if (!res.ok) {
+   849→        const data = await res.json().catch(() => ({}));
+   850→        toast.error(data?.error || "حذف ناموفق بود");
+   851→        return;
+   852→      }
+   853→      toast.success("ویدئو حذف شد");
+   854→      setOpen(false);
+   855→      onDeleted();
+   856→    } catch {
+   857→      toast.error("ارتباط با سرور ناموفق بود");
+   858→    } finally {
+   859→      setDeleting(false);
+   860→    }
+   861→  };
+   862→
+   863→  return (
+   864→    <AlertDialog
+   865→      open={open}
+   866→      onOpenChange={(o) => {
+   867→        setOpen(o);
+   868→        if (!o) onClose();
+   869→      }}
+   870→    >
+   871→      <AlertDialogContent>
+   872→        <AlertDialogHeader>
+   873→          <AlertDialogTitle className="flex items-center gap-2">
+   874→            <AlertTriangle className="h-5 w-5 text-destructive" />
+   875→            حذف ویدئو
+   876→          </AlertDialogTitle>
+   877→          <AlertDialogDescription>
+   878→            این عمل قابل بازگشت نیست. فایل ویدئو و رکورد آن از پایگاه داده حذف
+   879→            می‌شود. آیا مطمئن هستید؟
+   880→          </AlertDialogDescription>
+   881→        </AlertDialogHeader>
+   882→        <AlertDialogFooter>
+   883→          <AlertDialogCancel disabled={deleting}>انصراف</AlertDialogCancel>
+   884→          <AlertDialogAction
+   885→            onClick={(e) => {
+   886→              e.preventDefault();
+   887→              confirm();
+   888→            }}
+   889→            disabled={deleting}
+   890→            className="gap-1.5"
+   891→          >
+   892→            {deleting ? (
+   893→              <Loader2 className="h-4 w-4 animate-spin" />
+   894→            ) : (
+   895→              <Trash2 className="h-4 w-4" />
+   896→            )}
+   897→            حذف
+   898→          </AlertDialogAction>
+   899→        </AlertDialogFooter>
+   900→      </AlertDialogContent>
+   901→    </AlertDialog>
+   902→  );
+   903→}
+   904→
+   905→/* ----------------------------- Groups Tab ----------------------------- */
+   906→
+   907→function GroupsTab() {
+   908→  const [groups, setGroups] = React.useState<AdminGroup[]>([]);
+   909→  const [loading, setLoading] = React.useState(true);
+   910→
+   911→  const refresh = React.useCallback(async () => {
+   912→    setLoading(true);
+   913→    try {
+   914→      const res = await fetch("/api/admin/groups", { cache: "no-store" });
+   915→      const data = await res.json();
+   916→      setGroups(data?.groups ?? []);
+   917→    } catch {
+   918→      // ignore
+   919→    } finally {
+   920→      setLoading(false);
+   921→    }
+   922→  }, []);
+   923→
+   924→  React.useEffect(() => {
+   925→    refresh();
+   926→  }, [refresh]);
+   927→
+   928→  return (
+   929→    <div className="space-y-6">
+   930→      <CreateGroupCard onCreated={refresh} />
+   931→      <GroupsList groups={groups} loading={loading} onChanged={refresh} />
+   932→    </div>
+   933→  );
+   934→}
+   935→
+   936→function CreateGroupCard({ onCreated }: { onCreated: () => void }) {
+   937→  const [name, setName] = React.useState("");
+   938→  const [slug, setSlug] = React.useState("");
+   939→  const [creating, setCreating] = React.useState(false);
+   940→
+   941→  const submit = async (e: React.FormEvent) => {
+   942→    e.preventDefault();
+   943→    if (!name.trim()) {
+   944→      toast.error("نام گروه را وارد کنید");
+   945→      return;
+   946→    }
+   947→    setCreating(true);
+   948→    try {
+   949→      const res = await fetch("/api/admin/groups", {
+   950→        method: "POST",
+   951→        headers: { "Content-Type": "application/json" },
+   952→        body: JSON.stringify({ name: name.trim(), slug: slug.trim() }),
+   953→      });
+   954→      const data = await res.json().catch(() => ({}));
+   955→      if (!res.ok) {
+   956→        toast.error(data?.error || "ایجاد گروه ناموفق بود");
+   957→        return;
+   958→      }
+   959→      toast.success("گروه ایجاد شد");
+   960→      setName("");
+   961→      setSlug("");
+   962→      onCreated();
+   963→    } catch {
+   964→      toast.error("ارتباط با سرور ناموفق بود");
+   965→    } finally {
+   966→      setCreating(false);
+   967→    }
+   968→  };
+   969→
+   970→  return (
+   971→    <Card>
+   972→      <CardHeader>
+   973→        <CardTitle className="flex items-center gap-2 text-base">
+   974→          <Plus className="h-5 w-5" />
+   975→          ایجاد گروه جدید
+   976→        </CardTitle>
+   977→        <CardDescription>
+   978→          گروه‌ها برای دسته‌بندی ویدئوها در صفحه اصلی استفاده می‌شوند.
+   979→        </CardDescription>
+   980→      </CardHeader>
+   981→      <CardContent>
+   982→        <form onSubmit={submit} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+   983→          <div className="space-y-2">
+   984→            <Label htmlFor="g-name">نام گروه</Label>
+   985→            <Input
+   986→              id="g-name"
+   987→              value={name}
+   988→              onChange={(e) => setName(e.target.value)}
+   989→              placeholder="مثلاً: دروس ریاضی"
+   990→              disabled={creating}
+   991→            />
+   992→          </div>
+   993→          <div className="space-y-2">
+   994→            <Label htmlFor="g-slug">اسلاگ (اختیاری)</Label>
+   995→            <Input
+   996→              id="g-slug"
+   997→              value={slug}
+   998→              onChange={(e) => setSlug(e.target.value)}
+   999→              placeholder="خودکار از نام"
+  1000→              disabled={creating}
+  1001→              dir="ltr"
+  1002→            />
+  1003→          </div>
+  1004→          <Button type="submit" disabled={creating} className="gap-1.5">
+  1005→            {creating ? (
+  1006→              <Loader2 className="h-4 w-4 animate-spin" />
+  1007→            ) : (
+  1008→              <Plus className="h-4 w-4" />
+  1009→            )}
+  1010→            ایجاد گروه
+  1011→          </Button>
+  1012→        </form>
+  1013→      </CardContent>
+  1014→    </Card>
+  1015→  );
+  1016→}
+  1017→
+  1018→function GroupsList({
+  1019→  groups,
+  1020→  loading,
+  1021→  onChanged,
+  1022→}: {
+  1023→  groups: AdminGroup[];
+  1024→  loading: boolean;
+  1025→  onChanged: () => void;
+  1026→}) {
+  1027→  const [editingId, setEditingId] = React.useState<string | null>(null);
+  1028→  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  1029→
+  1030→  if (loading) {
+  1031→    return (
+  1032→      <Card>
+  1033→        <CardContent className="py-10">
+  1034→          <div className="flex flex-col items-center gap-3 text-muted-foreground">
+  1035→            <Loader2 className="h-6 w-6 animate-spin" />
+  1036→            <p className="text-sm">در حال بارگذاری...</p>
+  1037→          </div>
+  1038→        </CardContent>
+  1039→      </Card>
+  1040→    );
+  1041→  }
+  1042→  if (groups.length === 0) {
+  1043→    return (
+  1044→      <Card>
+  1045→        <CardContent className="py-10 text-center">
+  1046→          <FolderOpen className="mx-auto h-10 w-10 text-muted-foreground/50" />
+  1047→          <p className="mt-3 text-sm text-muted-foreground">
+  1048→            هنوز گروهی ایجاد نشده است.
+  1049→          </p>
+  1050→        </CardContent>
+  1051→      </Card>
+  1052→    );
+  1053→  }
+  1054→
+  1055→  const editingGroup = groups.find((g) => g.id === editingId) ?? null;
+  1056→
+  1057→  return (
+  1058→    <>
+  1059→      <div className="space-y-3">
+  1060→        {groups.map((g) => (
+  1061→          <Card key={g.id}>
+  1062→            <CardContent className="p-4">
+  1063→              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+  1064→                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+  1065→                  <FolderOpen className="h-5 w-5" />
+  1066→                </div>
+  1067→                <div className="min-w-0 flex-1 space-y-1">
+  1068→                  <div className="flex flex-wrap items-center gap-2">
+  1069→                    <h4 className="text-sm font-semibold leading-tight">
+  1070→                      {g.name}
+  1071→                    </h4>
+  1072→                    <Badge variant="secondary" className="text-[10px]" dir="ltr">
+  1073→                      {g.slug}
+  1074→                    </Badge>
+  1075→                    <Badge variant="outline" className="text-[10px]">
+  1076→                      {g.videoCount ?? 0} ویدئو
+  1077→                    </Badge>
+  1078→                    <Badge variant="outline" className="text-[10px]">
+  1079→                      ترتیب: {g.order}
+  1080→                    </Badge>
+  1081→                  </div>
+  1082→                </div>
+  1083→                <div className="flex shrink-0 gap-2">
+  1084→                  <Button
+  1085→                    type="button"
+  1086→                    variant="outline"
+  1087→                    size="sm"
+  1088→                    className="gap-1"
+  1089→                    onClick={() => setEditingId(g.id)}
+  1090→                  >
+  1091→                    <Pencil className="h-4 w-4" />
+  1092→                    ویرایش
+  1093→                  </Button>
+  1094→                  <Button
+  1095→                    type="button"
+  1096→                    variant="destructive"
+  1097→                    size="sm"
+  1098→                    className="gap-1"
+  1099→                    onClick={() => setDeletingId(g.id)}
+  1100→                  >
+  1101→                    <Trash2 className="h-4 w-4" />
+  1102→                    حذف
+  1103→                  </Button>
+  1104→                </div>
+  1105→              </div>
+  1106→            </CardContent>
+  1107→          </Card>
+  1108→        ))}
+  1109→      </div>
+  1110→      {editingGroup ? (
+  1111→        <EditGroupDialog
+  1112→          group={editingGroup}
+  1113→          onClose={() => setEditingId(null)}
+  1114→          onSaved={() => {
+  1115→            setEditingId(null);
+  1116→            onChanged();
+  1117→          }}
+  1118→        />
+  1119→      ) : null}
+  1120→      <DeleteGroupDialog
+  1121→        groupId={deletingId}
+  1122→        groups={groups}
+  1123→        onClose={() => setDeletingId(null)}
+  1124→        onDeleted={() => {
+  1125→          setDeletingId(null);
+  1126→          onChanged();
+  1127→        }}
+  1128→      />
+  1129→    </>
+  1130→  );
+  1131→}
+  1132→
+  1133→function EditGroupDialog({
+  1134→  group,
+  1135→  onClose,
+  1136→  onSaved,
+  1137→}: {
+  1138→  group: AdminGroup;
+  1139→  onClose: () => void;
+  1140→  onSaved: () => void;
+  1141→}) {
+  1142→  const [name, setName] = React.useState(group.name);
+  1143→  const [slug, setSlug] = React.useState(group.slug);
+  1144→  const [order, setOrder] = React.useState(String(group.order));
+  1145→  const [saving, setSaving] = React.useState(false);
+  1146→  const [open, setOpen] = React.useState(true);
+  1147→
+  1148→  const submit = async (e: React.FormEvent) => {
+  1149→    e.preventDefault();
+  1150→    setSaving(true);
+  1151→    try {
+  1152→      const body: Record<string, string | number> = {};
+  1153→      if (name.trim() && name !== group.name) body.name = name.trim();
+  1154→      if (slug.trim() && slug !== group.slug) body.slug = slug.trim();
+  1155→      const ord = parseInt(order, 10);
+  1156→      if (!Number.isNaN(ord) && ord !== group.order) body.order = ord;
+  1157→      const res = await fetch(`/api/admin/groups/${group.id}`, {
+  1158→        method: "PATCH",
+  1159→        headers: { "Content-Type": "application/json" },
+  1160→        body: JSON.stringify(body),
+  1161→      });
+  1162→      const data = await res.json().catch(() => ({}));
+  1163→      if (!res.ok) {
+  1164→        toast.error(data?.error || "ذخیره ناموفق بود");
+  1165→        return;
+  1166→      }
+  1167→      toast.success("تغییرات ذخیره شد");
+  1168→      setOpen(false);
+  1169→      onSaved();
+  1170→      onClose();
+  1171→    } catch {
+  1172→      toast.error("ارتباط با سرور ناموفق بود");
+  1173→    } finally {
+  1174→      setSaving(false);
+  1175→    }
+  1176→  };
+  1177→
+  1178→  return (
+  1179→    <Dialog
+  1180→      open={open}
+  1181→      onOpenChange={(o) => {
+  1182→        if (!o) {
+  1183→          setOpen(false);
+  1184→          onClose();
+  1185→        }
+  1186→      }}
+  1187→    >
+  1188→      <DialogContent>
+  1189→        <DialogHeader>
+  1190→          <DialogTitle>ویرایش گروه</DialogTitle>
+  1191→          <DialogDescription>
+  1192→            نام، اسلاگ یا ترتیب نمایش گروه را تغییر دهید.
+  1193→          </DialogDescription>
+  1194→        </DialogHeader>
+  1195→        <form onSubmit={submit} className="space-y-4">
+  1196→          <div className="space-y-2">
+  1197→            <Label htmlFor="ge-name">نام</Label>
+  1198→            <Input
+  1199→              id="ge-name"
+  1200→              value={name}
+  1201→              onChange={(e) => setName(e.target.value)}
+  1202→              disabled={saving}
+  1203→            />
+  1204→          </div>
+  1205→          <div className="space-y-2">
+  1206→            <Label htmlFor="ge-slug">اسلاگ</Label>
+  1207→            <Input
+  1208→              id="ge-slug"
+  1209→              value={slug}
+  1210→              onChange={(e) => setSlug(e.target.value)}
+  1211→              disabled={saving}
+  1212→              dir="ltr"
+  1213→            />
+  1214→          </div>
+  1215→          <div className="space-y-2">
+  1216→            <Label htmlFor="ge-order">ترتیب</Label>
+  1217→            <Input
+  1218→              id="ge-order"
+  1219→              type="number"
+  1220→              value={order}
+  1221→              onChange={(e) => setOrder(e.target.value)}
+  1222→              disabled={saving}
+  1223→            />
+  1224→          </div>
+  1225→          <DialogFooter>
+  1226→            <DialogClose asChild>
+  1227→              <Button type="button" variant="outline" disabled={saving}>
+  1228→                انصراف
+  1229→              </Button>
+  1230→            </DialogClose>
+  1231→            <Button type="submit" disabled={saving} className="gap-1.5">
+  1232→              {saving ? (
+  1233→                <Loader2 className="h-4 w-4 animate-spin" />
+  1234→              ) : (
+  1235→                <Save className="h-4 w-4" />
+  1236→              )}
+  1237→              ذخیره
+  1238→            </Button>
+  1239→          </DialogFooter>
+  1240→        </form>
+  1241→      </DialogContent>
+  1242→    </Dialog>
+  1243→  );
+  1244→}
+  1245→
+  1246→function DeleteGroupDialog({
+  1247→  groupId,
+  1248→  groups,
+  1249→  onClose,
+  1250→  onDeleted,
+  1251→}: {
+  1252→  groupId: string | null;
+  1253→  groups: AdminGroup[];
+  1254→  onClose: () => void;
+  1255→  onDeleted: () => void;
+  1256→}) {
+  1257→  const [deleting, setDeleting] = React.useState(false);
+  1258→  const [open, setOpen] = React.useState(false);
+  1259→
+  1260→  React.useEffect(() => {
+  1261→    setOpen(groupId !== null);
+  1262→  }, [groupId]);
+  1263→
+  1264→  const g = groups.find((x) => x.id === groupId) ?? null;
+  1265→
+  1266→  const confirm = async () => {
+  1267→    if (!groupId) return;
+  1268→    setDeleting(true);
+  1269→    try {
+  1270→      const res = await fetch(`/api/admin/groups/${groupId}`, {
+  1271→        method: "DELETE",
+  1272→      });
+  1273→      if (!res.ok) {
+  1274→        const data = await res.json().catch(() => ({}));
+  1275→        toast.error(data?.error || "حذف ناموفق بود");
+  1276→        return;
+  1277→      }
+  1278→      toast.success("گروه حذف شد");
+  1279→      setOpen(false);
+  1280→      onDeleted();
+  1281→    } catch {
+  1282→      toast.error("ارتباط با سرور ناموفق بود");
+  1283→    } finally {
+  1284→      setDeleting(false);
+  1285→    }
+  1286→  };
+  1287→
+  1288→  return (
+  1289→    <AlertDialog
+  1290→      open={open}
+  1291→      onOpenChange={(o) => {
+  1292→        setOpen(o);
+  1293→        if (!o) onClose();
+  1294→      }}
+  1295→    >
+  1296→      <AlertDialogContent>
+  1297→        <AlertDialogHeader>
+  1298→          <AlertDialogTitle className="flex items-center gap-2">
+  1299→            <AlertTriangle className="h-5 w-5 text-destructive" />
+  1300→            حذف گروه
+  1301→          </AlertDialogTitle>
+  1302→          <AlertDialogDescription>
+  1303→            گروه «{g?.name ?? ""}» حذف می‌شود. ویدئوهای این گروه به حالت
+  1304→            «بدون گروه» منتقل می‌شوند. آیا مطمئن هستید؟
+  1305→          </AlertDialogDescription>
+  1306→        </AlertDialogHeader>
+  1307→        <AlertDialogFooter>
+  1308→          <AlertDialogCancel disabled={deleting}>انصراف</AlertDialogCancel>
+  1309→          <AlertDialogAction
+  1310→            onClick={(e) => {
+  1311→              e.preventDefault();
+  1312→              confirm();
+  1313→            }}
+  1314→            disabled={deleting}
+  1315→            className="gap-1.5"
+  1316→          >
+  1317→            {deleting ? (
+  1318→              <Loader2 className="h-4 w-4 animate-spin" />
+  1319→            ) : (
+  1320→              <Trash2 className="h-4 w-4" />
+  1321→            )}
+  1322→            حذف
+  1323→          </AlertDialogAction>
+  1324→        </AlertDialogFooter>
+  1325→      </AlertDialogContent>
+  1326→    </AlertDialog>
+  1327→  );
+  1328→}
+  1329→
