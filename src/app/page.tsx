@@ -16,6 +16,7 @@ import {
   MonitorPlay,
   Link2,
   Download,
+  Eye,
   FolderOpen,
   AlertCircle,
 } from "lucide-react";
@@ -47,6 +48,7 @@ interface VideoItem {
   createdAt: string;
   groupId: string | null;
   downloadable: boolean;
+  viewCount: number;
 }
 
 interface GroupItem {
@@ -97,6 +99,32 @@ export default function Home() {
   const currentBlobUrlRef = React.useRef<string | null>(null);
 
   const allVideos = React.useMemo(() => flattenVideos(data), [data]);
+  const [viewBumps, setViewBumps] = React.useState<Record<string, number>>({});
+  const viewsOf = React.useCallback(
+    (v: VideoItem) => (v.viewCount || 0) + (viewBumps[v.id] ?? 0),
+    [viewBumps],
+  );
+
+  const sendHeartbeat = React.useCallback(
+    (slug: string | null, name: string | null) => {
+      try {
+        fetch("/api/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoSlug: slug, videoName: name }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {
+        // ignore
+      }
+    },
+    [],
+  );
+
+  // Announce presence on mount.
+  React.useEffect(() => {
+    sendHeartbeat(null, null);
+  }, [sendHeartbeat]);
 
   const fetchVideos = React.useCallback(async () => {
     setLoading(true);
@@ -152,6 +180,28 @@ export default function Home() {
     () => allVideos.findIndex((v) => v.slug === selectedSlug),
     [allVideos, selectedSlug],
   );
+
+  // On selection change: send heartbeat + increment view count (optimistic + server).
+  React.useEffect(() => {
+    if (!selected) return;
+    sendHeartbeat(selected.slug, selected.displayName);
+    setViewBumps((prev) => ({
+      ...prev,
+      [selected.id]: (prev[selected.id] ?? 0) + 1,
+    }));
+    fetch(`/api/videos/${selected.id}/view`, {
+      method: "POST",
+      keepalive: true,
+    }).catch(() => {});
+  }, [selected, sendHeartbeat]);
+
+  // Periodic heartbeat so the admin sees us as "online".
+  React.useEffect(() => {
+    const t = setInterval(() => {
+      sendHeartbeat(selected?.slug ?? null, selected?.displayName ?? null);
+    }, 20000);
+    return () => clearInterval(t);
+  }, [selected, sendHeartbeat]);
 
   const selectBySlug = React.useCallback(
     (slug: string | null) => {
@@ -375,6 +425,11 @@ export default function Home() {
           <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
             <span>{v.sizeLabel}</span>
             <Separator orientation="vertical" className="h-3" />
+            <span className="inline-flex items-center gap-1">
+              <Eye className="h-3 w-3" />
+              {viewsOf(v).toLocaleString("fa-IR")}
+            </span>
+            <Separator orientation="vertical" className="h-3" />
             <span>{v.modifiedLabel}</span>
           </span>
         </span>
@@ -535,6 +590,10 @@ export default function Home() {
                       <span className="inline-flex items-center gap-1.5">
                         <HardDrive className="h-4 w-4" />
                         {selected.sizeLabel}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Eye className="h-4 w-4" />
+                        {viewsOf(selected).toLocaleString("fa-IR")} بازدید
                       </span>
                       <span className="inline-flex items-center gap-1.5">
                         <Calendar className="h-4 w-4" />

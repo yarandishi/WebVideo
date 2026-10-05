@@ -21,6 +21,8 @@ import {
   Calendar,
   Link2,
   Download,
+  Eye,
+  Users,
 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -86,6 +88,7 @@ interface AdminVideo {
   groupId: string | null;
   groupName: string | null;
   downloadable: boolean;
+  viewCount: number;
 }
 
 /* ----------------------------- Page ----------------------------- */
@@ -265,24 +268,141 @@ function LoginCard({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 
 function Dashboard() {
   return (
-    <Tabs defaultValue="videos" className="gap-4">
-      <TabsList>
-        <TabsTrigger value="videos" className="gap-1.5">
-          <Film className="h-4 w-4" />
-          ویدئوها
-        </TabsTrigger>
-        <TabsTrigger value="groups" className="gap-1.5">
-          <FolderOpen className="h-4 w-4" />
-          گروه‌ها
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="videos">
-        <VideosTab />
-      </TabsContent>
-      <TabsContent value="groups">
-        <GroupsTab />
-      </TabsContent>
-    </Tabs>
+    <div className="space-y-4">
+      <OnlinePanel />
+      <Tabs defaultValue="videos" className="gap-4">
+        <TabsList>
+          <TabsTrigger value="videos" className="gap-1.5">
+            <Film className="h-4 w-4" />
+            ویدئوها
+          </TabsTrigger>
+          <TabsTrigger value="groups" className="gap-1.5">
+            <FolderOpen className="h-4 w-4" />
+            گروه‌ها
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="videos">
+          <VideosTab />
+        </TabsContent>
+        <TabsContent value="groups">
+          <GroupsTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* ----------------------------- Online users ----------------------------- */
+
+interface OnlineSession {
+  sid: string;
+  ip: string;
+  videoSlug: string | null;
+  videoName: string | null;
+  lastSeenAgo: number;
+  firstSeen: number;
+}
+
+function OnlinePanel() {
+  const [data, setData] = React.useState<{
+    online: number;
+    sessions: OnlineSession[];
+  } | null>(null);
+
+  const refresh = React.useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/online", { cache: "no-store" });
+      if (r.ok) setData(await r.json());
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  React.useEffect(() => {
+    refresh();
+    const t = setInterval(refresh, 10000);
+    return () => clearInterval(t);
+  }, [refresh]);
+
+  const online = data?.online ?? 0;
+  const sessions = data?.sessions ?? [];
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Users className="h-4 w-4" />
+          </div>
+          <CardTitle className="text-base">کاربران آنلاین</CardTitle>
+          <Badge
+            variant={online > 0 ? "default" : "secondary"}
+            className="gap-1"
+          >
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                online > 0
+                  ? "bg-green-500 animate-pulse"
+                  : "bg-muted-foreground",
+              )}
+            />
+            {online.toLocaleString("fa-IR")} فعال
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ms-auto h-8 gap-1"
+            onClick={refresh}
+          >
+            تازه‌سازی
+          </Button>
+        </div>
+        <CardDescription>
+          کاربرانی که در ۶۰ ثانیه گذشته در سایت فعال بوده‌اند.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {online === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            در حال حاضر کاربر آنلاینی در سایت نیست.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {sessions.map((s) => (
+              <li
+                key={s.sid}
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2 text-sm"
+              >
+                <span
+                  className="inline-flex items-center gap-1.5 font-mono"
+                  dir="ltr"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  {s.ip}
+                </span>
+                {s.videoName ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Eye className="h-3.5 w-3.5" />
+                    <span className="truncate max-w-[200px]">
+                      {s.videoName}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    در حال مرور سایت
+                  </span>
+                )}
+                <span className="ms-auto text-xs text-muted-foreground">
+                  {Math.round(s.lastSeenAgo / 1000).toLocaleString("fa-IR")}{" "}
+                  ثانیه پیش
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -656,6 +776,10 @@ function VideoRow({
               <span className="inline-flex items-center gap-1">
                 <HardDrive className="h-3 w-3" />
                 {v.sizeLabel}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Eye className="h-3 w-3" />
+                {v.viewCount.toLocaleString("fa-IR")} بازدید
               </span>
               <span className="inline-flex items-center gap-1">
                 <Calendar className="h-3 w-3" />

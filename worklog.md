@@ -229,3 +229,28 @@ Stage Summary:
 - Per-video download toggle fully working: admin enables/disables via Switch in upload + edit; main page shows "دانلود ویدئو" only when enabled; download uses IndexedDB cache (instant, no network) when available, else fetches then downloads (and caches for next time).
 - Admin password: admin1234. Offline constraint intact (no external requests).
 - No issues.
+
+---
+Task ID: 9
+Agent: main (Z.ai Code)
+Task: Add (1) per-video view count that is visible, (2) admin panel showing currently-active IPs/viewers on the site.
+
+Work Log:
+- Schema: added `viewCount Int @default(0)` to Video model; ran `bun run db:push`.
+- src/lib/videos.ts: added viewCount to PublicVideo interface, toPublicVideo (param+return), and listAllVideosForAdmin return.
+- src/lib/sessions.ts (new): in-memory ViewerSession store keyed by per-browser `sid` cookie; getClientIp() reads x-forwarded-for / x-real-ip; touchSession(); getActiveSessions() (active within ACTIVE_TIMEOUT_MS=60s); cleanupStaleSessions().
+- POST /api/heartbeat: sets `vl_sid` cookie if missing, reads IP + UA, parses body {videoSlug?, videoName?}, touches session. Public.
+- GET /api/admin/online: requireAdmin; returns {online, sessions:[{sid, ip, videoSlug, videoName, lastSeenAgo, firstSeen}]}.
+- POST /api/videos/[id]/view: increments video.viewCount; returns {ok, viewCount}. Public, fire-and-forget.
+- src/app/page.tsx: added viewCount to VideoItem; added Eye icon; added viewBumps state + viewsOf(v)=viewCount+bumps; sendHeartbeat() helper; on mount sends presence heartbeat; on `selected` change: sends heartbeat + optimistic viewBumps bump + POST /api/videos/[id]/view; periodic heartbeat every 20s; shows "👁 N" in sidebar item and "N بازدید" in player meta. (Fixed an init-order bug: moved the selected-dependent effects to AFTER the `selected` useMemo to resolve "Cannot access 'selected' before initialization" ReferenceError.)
+- src/app/admin/page.tsx: added viewCount to AdminVideo; imported Eye + Users; added OnlinePanel component (polls /api/admin/online every 10s, shows count badge with pulsing green dot + list of sessions: IP, current video or "در حال مرور سایت", last-seen-ago); rendered OnlinePanel above the Tabs in Dashboard; added "👁 N بازدید" to VideoRow meta.
+- Restarted dev server + cleared .next so a fresh PrismaClient (knowing viewCount + downloadable) was loaded (the stale client previously caused 500s). Lint clean. dev.log clean (200s).
+
+Agent-browser E2E:
+- Main page /?v=sample-lesson-1: sidebar item shows "sample-lesson-1 75.5 KB ۱ ۱۴۰۵/۷/۱۳" (۱ = view count), player meta shows "بازدید". Switching to sample-2 and back fired 3× POST /api/videos/{id}/view (all 200) → view count increments on each selection.
+- Admin /admin login (admin1234) → Online panel rendered: "کاربران آنلاین · ۲ فعال" with a session showing IP "::1" (localhost) watching "sample-lesson-1" "۳۲ ثانیه پیش", plus a second session "در حال مرور سایت". (On a real LAN the IP would be the colleague's LAN IP via X-Forwarded-For.)
+
+Stage Summary:
+- View count: visible per-video on the main page (sidebar + player meta) and in admin rows; increments on each view via POST /api/videos/[id]/view.
+- Active viewers: admin "کاربران آنلاین" panel shows count + per-session IP, current video, last-seen; auto-refreshes every 10s; presence tracked via /api/heartbeat (per-browser sid cookie, 60s active window).
+- Offline constraint intact (no external requests; in-memory sessions + DB only). Admin password: admin1234.
