@@ -254,3 +254,21 @@ Stage Summary:
 - View count: visible per-video on the main page (sidebar + player meta) and in admin rows; increments on each view via POST /api/videos/[id]/view.
 - Active viewers: admin "کاربران آنلاین" panel shows count + per-session IP, current video, last-seen; auto-refreshes every 10s; presence tracked via /api/heartbeat (per-browser sid cookie, 60s active window).
 - Offline constraint intact (no external requests; in-memory sessions + DB only). Admin password: admin1234.
+
+---
+Task ID: 10
+Agent: main (Z.ai Code)
+Task: Fix Prisma "Cannot find @prisma/client" error on the user's Windows machine; use a proper offline Persian font.
+
+Work Log:
+- Diagnosed the Windows Prisma error: the user copied the project to `C:\Next Projects\learnvideo\LearnV8` and ran it; `import { PrismaClient } from '@prisma/client'` failed because (a) the Prisma generated client was missing (no `prisma generate` run on Windows), and (b) the Linux Prisma query-engine binary in node_modules wouldn't run on Windows.
+- package.json: added `"postinstall": "prisma generate || echo skipped"` so that `npm install`/`bun install` auto-generates the (platform-correct) Prisma client. User just needs install → db:push → dev.
+- .env: changed `DATABASE_URL` from the absolute Linux path `file:/home/z/my-project/db/custom.db` to a cross-platform relative path `file:./db/custom.db`. Verified on the sandbox that this resolves to the same DB file and PRESERVES all data (groups:1, videos:2, view counts intact — sidebar still showed "۹" views for sample-lesson-1).
+- Font: downloaded 4 Vazirmatn woff2 files (arabic + latin subsets, weights 400 + 700) from the fontsource CDN ONCE during dev into `public/fonts/`. Added 4 `@font-face` declarations in src/app/globals.css with `unicode-range` (Latin → latin file, Persian/Arabic → arabic file). Set `--font-sans: "Vazirmatn", system-ui, ...Tahoma...`. The font is self-hosted from the local Next.js server → fully offline at both dev and runtime (NO `next/font/google`, NO Google Fonts fetch). The files are bundled in the repo so end users get them offline.
+- Restarted dev server (fresh Prisma client + new .env + font CSS). Lint clean. dev.log clean (200s).
+- Agent-browser verification: page loads; 4 font requests to `http://localhost:3000/fonts/vazirmatn-*.woff2` (all 200, all LOCAL); NO external host in any request (only localhost); computed font-family = "Vazirmatn, system-ui, ..."; data preserved (group "دروس آموزشی" + 2 sample videos + view counts).
+
+Stage Summary:
+- Windows Prisma fix: postinstall auto-generates the client; relative DATABASE_URL works cross-platform. User steps: `npm install` (auto prisma generate) → `npm run db:push` (creates db/custom.db + tables) → `npm run dev`.
+- Offline font: Vazirmatn (proper Persian font) self-hosted from public/fonts/ via @font-face + unicode-range; zero external font requests; bundled in repo for offline use on the LAN.
+- Removed db/custom.db.bak (data verified preserved). Admin password: admin1234.
