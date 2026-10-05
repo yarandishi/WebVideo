@@ -439,6 +439,21 @@ function VideosTab() {
     refresh();
   }, [refresh]);
 
+  // Auto-refresh when the admin window/tab regains focus, so data created in
+  // another browser (or after re-login) shows up here too.
+  React.useEffect(() => {
+    const onFocus = () => refresh();
+    const onVis = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [refresh]);
+
   return (
     <div className="space-y-6">
       <UploadCard groups={groups} onUploaded={refresh} />
@@ -1090,6 +1105,21 @@ function GroupsTab() {
 
   React.useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  // Auto-refresh when the admin window/tab regains focus, so groups created in
+  // another browser show up here too.
+  React.useEffect(() => {
+    const onFocus = () => refresh();
+    const onVis = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [refresh]);
 
   return (

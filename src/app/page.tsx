@@ -17,6 +17,8 @@ import {
   Link2,
   Download,
   Eye,
+  Maximize2,
+  Minimize2,
   FolderOpen,
   AlertCircle,
 } from "lucide-react";
@@ -97,6 +99,25 @@ export default function Home() {
   const [query, setQuery] = React.useState("");
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const currentBlobUrlRef = React.useRef<string | null>(null);
+
+  // Fullscreen (enlarge / shrink) controls for the player.
+  const playerWrapRef = React.useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+  const toggleFullscreen = React.useCallback(() => {
+    const el = playerWrapRef.current;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else if (el) {
+      el.requestFullscreen().catch(() => {});
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
 
   const allVideos = React.useMemo(() => flattenVideos(data), [data]);
   const [viewBumps, setViewBumps] = React.useState<Record<string, number>>({});
@@ -564,7 +585,13 @@ export default function Home() {
                 className="flex flex-col gap-4"
               >
                   {/* Player */}
-                  <div className="relative overflow-hidden rounded-2xl border border-border bg-black shadow-lg ring-1 ring-black/5">
+                  <div
+                    ref={playerWrapRef}
+                    className={cn(
+                      "relative overflow-hidden rounded-2xl border border-border bg-black shadow-lg ring-1 ring-black/5",
+                      isFullscreen && "rounded-none border-0 ring-0",
+                    )}
+                  >
                     <video
                       ref={videoRef}
                       key={selected.id}
@@ -572,8 +599,33 @@ export default function Home() {
                       controls
                       playsInline
                       preload="metadata"
-                      className="aspect-video w-full bg-black"
+                      className={cn(
+                        "bg-black",
+                        isFullscreen
+                          ? "h-screen w-screen object-contain"
+                          : "aspect-video w-full",
+                      )}
                     />
+                    {/* Fullscreen enlarge / shrink button */}
+                    <button
+                      type="button"
+                      onClick={toggleFullscreen}
+                      aria-label={
+                        isFullscreen ? "خروج از تمام‌صفحه" : "نمایش تمام‌صفحه"
+                      }
+                      title={
+                        isFullscreen
+                          ? "خروج از تمام‌صفحه (Esc)"
+                          : "نمایش تمام‌صفحه"
+                      }
+                      className="absolute right-2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-lg bg-black/55 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+                    >
+                      {isFullscreen ? (
+                        <Minimize2 className="h-4 w-4" />
+                      ) : (
+                        <Maximize2 className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
 
                   {/* Title + meta */}

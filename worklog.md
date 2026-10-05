@@ -292,3 +292,20 @@ Work Log:
 Stage Summary:
 - Build now works on Windows: `npm install` (auto prisma generate) → `npm run db:push` → `npm run build` → `npm run start` (serves on 0.0.0.0:3000, LAN-accessible).
 - No code/data changes; purely config + scripts. Offline Vazirmatn font, view counts, online panel, download feature all intact.
+
+---
+Task ID: 12
+Agent: main (Z.ai Code)
+Task: (1) Groups created in one browser's admin not visible in another browser's admin. (2) Add video fullscreen enlarge/shrink controls.
+
+Work Log:
+- Investigated #1: GET admin routes already have `export const dynamic = "force-dynamic"` (not Next.js-cached) and client fetches already use `cache: "no-store"` (browser won't cache). Queried the DB → data is intact (group "دروس آموزشی" + sample-1 assigned to it + sample-2 ungrouped all persisted across restarts). So NOT data loss.
+- Root cause of cross-browser invisibility is most likely one of: (a) the user is mixing the SANDBOX preview (sandbox DB) with their LOCAL Windows app (local DB) — groups created in one DB do not appear in the other; or (b) a stale open admin tab in browser B showing old state.
+- Fix for (b): added a window `focus` + document `visibilitychange` listener to both VideosTab and GroupsTab in src/app/admin/page.tsx that calls their `refresh()` whenever the admin window/tab regains focus — so a stale open tab always re-fetches the latest groups/videos from the server. (Standard, low-risk pattern.)
+- #2 Fullscreen: in src/app/page.tsx added Maximize2/Minimize2 icons, a `playerWrapRef` on the player container, an `isFullscreen` state with a `fullscreenchange` listener, and a `toggleFullscreen()` that calls `el.requestFullscreen()` / `document.exitFullscreen()`. Added an overlay button (top-right, inside the container) that shows Maximize2 when normal ("نمایش تمام‌صفحه") and Minimize2 when fullscreen ("خروج از تمام‌صفحه (Esc)"). The video switches to `h-screen w-screen object-contain` in fullscreen so it fills the screen; the overlay button stays visible inside the fullscreen container so the user can shrink back.
+- Lint clean. dev.log clean (200s). Agent-browser verified: the "نمایش تمام‌صفحه" button is present; clicking it sets `document.fullscreenElement` to the container DIV (fs:true); exiting returns null. Admin still loads (dashboard tabs + sample videos present) after the focus-refresh edit.
+
+Stage Summary:
+- Cross-browser visibility: focus-auto-refresh added to Videos/Groups tabs (stale open tabs now re-fetch on focus). If the user is mixing the sandbox preview with their local Windows app, those are separate servers with separate databases — groups created in one will NOT appear in the other (expected, not a bug).
+- Fullscreen: custom enlarge/shrink button on the player (Maximize2 → enter fullscreen; Minimize2 → exit), plus the native video controls still available. Verified working.
+- No DB/data changes. Offline font, view counts, online panel, download, direct links all intact.
